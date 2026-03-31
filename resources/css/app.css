@@ -1,11 +1,36 @@
+/* En Nuxt, @nuxt/fonts carga esto solo; en Vue+Vite hay que traer la fuente explícitamente. */
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&display=swap');
+
 @import 'tailwindcss';
+@import '@nuxt/ui';
 
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
 @source '../**/*.blade.php';
 @source '../**/*.js';
+@source '../**/*.vue';
 
 @theme {
-    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
-        'Segoe UI Symbol', 'Noto Color Emoji';
+    --font-sans: 'DM Sans', sans-serif;
+}
+
+/* Nuxt UI aplica colores en body, no font-family; enlazamos la fuente del tema. */
+@layer base {
+    body {
+        font-family: var(--font-sans);
+    }
+}
+
+/*
+ * Tema semántico (primary, neutral, etc.): vite.config.js → ui({ ui: { colors: … } }).
+ * Tokens Tailwind (@theme) y overrides finos con variables CSS (--ui-*): aquí.
+ * Los valores de ui.colors deben ser nombres de paleta Tailwind (blue, zinc, …), no hex.
+ */
+
+:root {
+  --ui-primary: black;
+}
+
+.dark {
+  --ui-primary: white;
 }
