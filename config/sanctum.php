@@ -18,12 +18,23 @@ return [
     |
     */
 
-    'stateful' => explode(',', env('SANCTUM_STATEFUL_DOMAINS', sprintf(
-        '%s%s%s',
-        'localhost,localhost:3000,localhost:5173,127.0.0.1,127.0.0.1:8000,127.0.0.1:5173,::1',
-        Sanctum::currentApplicationUrlWithPort(),
-        Sanctum::currentRequestHost(),
-    ))),
+    /*
+     * Importante: si solo usas env('SANCTUM_STATEFUL_DOMAINS'), se pierden el host de APP_URL
+     * y __SANCTUM_CURRENT_REQUEST_HOST__; entonces las peticiones API no son "stateful",
+     * no corre StartSession y Auth::login + session() fallan ("Session store not set on request").
+     */
+    'stateful' => array_values(array_unique(array_filter(array_map(
+        trim(...),
+        explode(',', sprintf(
+            '%s%s%s',
+            env(
+                'SANCTUM_STATEFUL_DOMAINS',
+                'localhost,localhost:3000,localhost:5173,localhost:8000,127.0.0.1,127.0.0.1:8000,127.0.0.1:5173,::1',
+            ),
+            Sanctum::currentApplicationUrlWithPort(),
+            Sanctum::currentRequestHost(),
+        )),
+    )))),
 
     /*
     |--------------------------------------------------------------------------

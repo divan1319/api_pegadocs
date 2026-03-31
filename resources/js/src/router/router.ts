@@ -1,19 +1,57 @@
-import { createRouter, createWebHistory } from "vue-router";
+import { createRouter, createWebHistory } from 'vue-router';
+import { useAuth } from '@/composables/useAuth';
 
 const router = createRouter({
     history: createWebHistory(),
     routes: [
-        //ruta home
         {
             path: '/',
             component: () => import('@/pages/Home.vue'),
         },
-        //ruta 404
+        {
+            path: '/login',
+            component: () => import('@/pages/Login.vue'),
+            meta: { guestOnly: true },
+        },
+        {
+            path: '/register',
+            component: () => import('@/pages/Register.vue'),
+            meta: { guestOnly: true },
+        },
+        {
+            path: '/dashboard',
+            component: () => import('@/pages/dashboard/index.vue'),
+            meta: { requiresAuth: true },
+        },
         {
             path: '/:pathMatch(.*)*',
             component: () => import('@/pages/404.vue'),
         },
     ],
+});
+
+router.beforeEach(async (to) => {
+    const { user, resolveUser } = useAuth();
+
+    if (to.meta.requiresAuth) {
+        if (!user.value) {
+            await resolveUser();
+        }
+
+        if (!user.value) {
+            return { path: '/login', query: { redirect: to.fullPath } };
+        }
+    }
+
+    if (to.meta.guestOnly) {
+        if (!user.value) {
+            await resolveUser();
+        }
+
+        if (user.value) {
+            return { path: '/dashboard' };
+        }
+    }
 });
 
 export default router;
