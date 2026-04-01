@@ -20,8 +20,26 @@ const router = createRouter({
         },
         {
             path: '/dashboard',
-            component: () => import('@/pages/dashboard/index.vue'),
+            component: () => import('@/layouts/DashboardLayout.vue'),
             meta: { requiresAuth: true },
+            children: [
+                {
+                    path: '',
+                    component: () => import('@/pages/dashboard/WorkspacesView.vue'),
+                },
+                {
+                    path: 'workspaces/:workspaceId',
+                    component: () => import('@/pages/dashboard/WorkspaceDetailView.vue'),
+                },
+                {
+                    path: 'assignments/:assignmentId',
+                    component: () => import('@/pages/dashboard/AssignmentDetailView.vue'),
+                },
+                {
+                    path: 'assignments/:assignmentId/merge',
+                    component: () => import('@/pages/dashboard/AssignmentMergeView.vue'),
+                },
+            ],
         },
         {
             path: '/:pathMatch(.*)*',

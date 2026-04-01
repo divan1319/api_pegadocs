@@ -6,12 +6,14 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\StoreSubmissionRequest;
 use App\Http\Requests\Api\UpdateSubmissionStatusRequest;
 use App\Http\Resources\SubmissionResource;
+use App\Mail\SubmissionStatusChangedMail;
 use App\Models\Assignment;
 use App\Models\AssignmentMember;
 use App\Models\Submission;
 use App\Services\SubmissionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use InvalidArgumentException;
@@ -87,8 +89,23 @@ class SubmissionController extends Controller
     {
         $this->authorize('update', $submission);
 
+        $submission->load(['assignmentMember.user', 'assignment.workspace']);
+        $previous = $submission->status;
         $submission->update(['status' => $request->validated('status')]);
+        $submission->refresh();
 
-        return (new SubmissionResource($submission->fresh()))->response();
+        $new = $submission->status;
+        if (in_array($new, ['accepted', 'rejected'], true) && $previous !== $new) {
+            $recipient = $submission->assignmentMember->user;
+            if ($recipient !== null) {
+                try {
+                    Mail::to($recipient)->send(new SubmissionStatusChangedMail($submission));
+                } catch (\Throwable $e) {
+                    report($e);
+                }
+            }
+        }
+
+        return (new SubmissionResource($submission))->response();
     }
 }

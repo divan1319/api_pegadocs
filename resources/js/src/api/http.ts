@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios, { type InternalAxiosRequestConfig } from 'axios';
 
 /**
  * Cliente HTTP: sesión por cookie + CSRF Sanctum (XSRF-TOKEN → X-XSRF-TOKEN).
@@ -16,4 +16,12 @@ export const http = axios.create({
     },
     withCredentials: true,
     withXSRFToken: true,
+});
+
+http.interceptors.request.use((config: InternalAxiosRequestConfig) => {
+    if (config.data instanceof FormData && config.headers) {
+        delete config.headers['Content-Type'];
+    }
+
+    return config;
 });

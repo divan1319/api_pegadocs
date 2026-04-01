@@ -2,8 +2,8 @@
 
 namespace App\Mail;
 
+use App\Models\Submission;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Attachment;
 use Illuminate\Mail\Mailables\Content;
@@ -14,27 +14,28 @@ class SubmissionStatusChangedMail extends Mailable
 {
     use Queueable, SerializesModels;
 
-    /**
-     * Create a new message instance.
-     */
-    public function __construct()
-    {
-        //
+    public function __construct(
+        public Submission $submission,
+    ) {
+        $this->submission->loadMissing([
+            'assignmentMember.user',
+            'assignment.workspace',
+        ]);
     }
 
-    /**
-     * Get the message envelope.
-     */
     public function envelope(): Envelope
     {
+        $estado = match ($this->submission->status) {
+            'accepted' => 'aceptada',
+            'rejected' => 'rechazada',
+            default => $this->submission->status,
+        };
+
         return new Envelope(
-            subject: 'Submission Status Changed Mail',
+            subject: sprintf('Tu entrega fue %s — %s', $estado, config('app.name')),
         );
     }
 
-    /**
-     * Get the message content definition.
-     */
     public function content(): Content
     {
         return new Content(
@@ -43,8 +44,6 @@ class SubmissionStatusChangedMail extends Mailable
     }
 
     /**
-     * Get the attachments for the message.
-     *
      * @return array<int, Attachment>
      */
     public function attachments(): array

@@ -20,6 +20,7 @@ class AssignmentController extends Controller
         $this->authorize('view', $workspace);
 
         $assignments = $workspace->assignments()
+            ->with('workspace')
             ->orderByDesc('created_at')
             ->get();
 
@@ -43,6 +44,8 @@ class AssignmentController extends Controller
             'status' => $data['status'] ?? 'draft',
         ]);
 
+        $assignment->load('workspace');
+
         return (new AssignmentResource($assignment))
             ->response()
             ->setStatusCode(Response::HTTP_CREATED);
@@ -51,6 +54,8 @@ class AssignmentController extends Controller
     public function show(Request $request, Assignment $assignment): JsonResponse
     {
         $this->authorize('view', $assignment);
+
+        $assignment->loadMissing('workspace');
 
         return (new AssignmentResource($assignment))->response();
     }
@@ -61,7 +66,7 @@ class AssignmentController extends Controller
 
         $assignment->update($request->validated());
 
-        return (new AssignmentResource($assignment->fresh()))->response();
+        return (new AssignmentResource($assignment->fresh()->load('workspace')))->response();
     }
 
     public function destroy(Request $request, Assignment $assignment): Response
@@ -79,6 +84,6 @@ class AssignmentController extends Controller
 
         $assignment->update(['status' => $request->validated('status')]);
 
-        return (new AssignmentResource($assignment->fresh()))->response();
+        return (new AssignmentResource($assignment->fresh()->load('workspace')))->response();
     }
 }

@@ -16,6 +16,10 @@ class AssignmentResource extends JsonResource
             'id' => $this->id,
             'workspaceId' => $this->workspace_id,
             'createdBy' => $this->created_by,
+            'workspaceOwnerId' => $this->when(
+                $this->resource->relationLoaded('workspace'),
+                (int) $this->workspace->owner_id,
+            ),
             'name' => $this->name,
             'code' => $this->code,
             'description' => $this->description,
