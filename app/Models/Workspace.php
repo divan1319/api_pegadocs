@@ -17,7 +17,7 @@ class Workspace extends Model
 
         static::creating(function (Workspace $workspace): void {
             if (blank($workspace->code)) {
-                $workspace->code = (string) Str::uuid();
+                $workspace->code = (string) Str::upper(Str::random(8));
             }
         });
     }

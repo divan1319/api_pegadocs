@@ -17,7 +17,7 @@ class Assignment extends Model
 
         static::creating(function (Assignment $assignment): void {
             if (blank($assignment->code)) {
-                $assignment->code = (string) Str::uuid();
+                $assignment->code = (string) Str::upper(Str::random(8));
             }
         });
     }
