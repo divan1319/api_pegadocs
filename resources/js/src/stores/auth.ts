@@ -14,20 +14,28 @@ export const useAuthStore = defineStore('auth', () => {
     const user = ref<ApiUser | null>(null);
     const resolvingUser = ref(false);
 
+    /** Promesa compartida: evita que un segundo `resolveUser()` (p. ej. App.vue + router) termine antes que el fetch. */
+    let resolveUserInFlight: Promise<void> | null = null;
+
     const isAuthenticated = computed(() => user.value !== null);
 
     async function resolveUser(): Promise<void> {
-        if (resolvingUser.value) {
-            return;
+        if (resolveUserInFlight) {
+            return resolveUserInFlight;
         }
 
-        resolvingUser.value = true;
+        resolveUserInFlight = (async (): Promise<void> => {
+            resolvingUser.value = true;
 
-        try {
-            user.value = await fetchCurrentUser();
-        } finally {
-            resolvingUser.value = false;
-        }
+            try {
+                user.value = await fetchCurrentUser();
+            } finally {
+                resolvingUser.value = false;
+                resolveUserInFlight = null;
+            }
+        })();
+
+        return resolveUserInFlight;
     }
 
     async function login(payload: LoginPayload): Promise<ApiUser> {
