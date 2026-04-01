@@ -59,11 +59,18 @@ class User extends Authenticatable
 
     public function canAccessWorkspace(Workspace $workspace): bool
     {
-        if ((int) $workspace->owner_id === (int) $this->id) {
+        if ($this->isWorkspaceOwner($workspace)) {
             return true;
         }
 
-        return $workspace->members()->where('user_id', $this->id)->exists();
+        if (! $workspace->active) {
+            return false;
+        }
+
+        return $workspace->members()
+            ->where('user_id', $this->id)
+            ->where('active', true)
+            ->exists();
     }
 
     public function isWorkspaceOwner(Workspace $workspace): bool
@@ -87,26 +94,23 @@ class User extends Authenticatable
     }
 
     /**
-     * Puede ver/participar en la tarea: dueño del workspace (ve todas) o miembro explícito en assignment_members.
+     * Dueño del workspace ve todo; el resto solo si la tarea y el workspace están activos y su participación está activa.
      */
     public function canAccessAssignment(Assignment $assignment): bool
     {
-        if ($this->isWorkspaceOwner($assignment->workspace)) {
+        $workspace = $assignment->workspace;
+
+        if ($this->isWorkspaceOwner($workspace)) {
             return true;
         }
 
-        return $assignment->members()->where('user_id', $this->id)->exists();
-    }
-
-    /**
-     * Creador de la tarea o administrador del workspace.
-     */
-    public function canManageAssignment(Assignment $assignment): bool
-    {
-        if ($this->canAdminWorkspace($assignment->workspace)) {
-            return true;
+        if (! $workspace->active || ! $assignment->active) {
+            return false;
         }
 
-        return (int) $assignment->created_by === (int) $this->id;
+        return $assignment->members()
+            ->where('user_id', $this->id)
+            ->where('active', true)
+            ->exists();
     }
 }

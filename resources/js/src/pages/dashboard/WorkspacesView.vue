@@ -88,6 +88,7 @@ import { ref } from 'vue';
 import { useToast } from '@nuxt/ui/composables';
 import { createWorkspace, deleteWorkspace, fetchWorkspaces, joinWorkspace } from '@/api/workspaces';
 import { useAuth } from '@/composables/useAuth';
+import { firstValidationFieldError } from '@/lib/validationErrors';
 
 const toast = useToast();
 const queryClient = useQueryClient();
@@ -136,9 +137,12 @@ const joinMut = useMutation({
         toast.add({ title: 'Te uniste al workspace', color: 'success' });
     },
     onError: (e: unknown) => {
+        const fromField = firstValidationFieldError(e, 'code');
         toast.add({
             title: 'No se pudo unir',
-            description: axios.isAxiosError(e) ? String(e.response?.data?.message ?? e.message) : undefined,
+            description:
+                fromField ??
+                (axios.isAxiosError(e) ? String(e.response?.data?.message ?? e.message) : undefined),
             color: 'error',
         });
     },

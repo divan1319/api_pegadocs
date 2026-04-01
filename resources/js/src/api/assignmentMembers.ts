@@ -23,6 +23,19 @@ export async function removeAssignmentMember(assignmentId: number, userId: numbe
     await http.delete(`${apiV1}/assignments/${assignmentId}/members/${userId}`);
 }
 
+export async function patchAssignmentMemberActive(
+    assignmentId: number,
+    userId: number,
+    active: boolean,
+): Promise<AssignmentMember> {
+    const { data } = await http.patch<ApiEnvelope<AssignmentMember>>(
+        `${apiV1}/assignments/${assignmentId}/members/${userId}`,
+        { active },
+    );
+
+    return data.data;
+}
+
 export async function patchAssignmentMemberStatus(
     assignmentId: number,
     userId: number,

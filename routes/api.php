@@ -31,6 +31,7 @@ Route::prefix('v1')->group(function (): void {
         Route::apiResource('workspaces', WorkspaceController::class);
 
         Route::get('workspaces/{workspace}/members', [WorkspaceMemberController::class, 'index']);
+        Route::patch('workspaces/{workspace}/members/{user}', [WorkspaceMemberController::class, 'update']);
         Route::delete('workspaces/{workspace}/members/{user}', [WorkspaceMemberController::class, 'destroy']);
 
         Route::get('workspaces/{workspace}/assignments', [AssignmentController::class, 'index']);
@@ -45,6 +46,7 @@ Route::prefix('v1')->group(function (): void {
         Route::get('assignments/{assignment}/members', [AssignmentMemberController::class, 'index']);
         Route::post('assignments/{assignment}/members', [AssignmentMemberController::class, 'store']);
         Route::delete('assignments/{assignment}/members/{user}', [AssignmentMemberController::class, 'destroy']);
+        Route::patch('assignments/{assignment}/members/{user}', [AssignmentMemberController::class, 'updateActivation']);
         Route::patch('assignments/{assignment}/members/{user}/status', [AssignmentMemberController::class, 'updateStatus']);
 
         Route::get('assignments/{assignment}/submissions', [SubmissionController::class, 'index']);

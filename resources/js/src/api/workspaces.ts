@@ -43,3 +43,29 @@ export async function joinWorkspace(code: string): Promise<Workspace> {
 export async function deleteWorkspace(id: number): Promise<void> {
     await http.delete(`${apiV1}/workspaces/${id}`);
 }
+
+export type PatchWorkspacePayload = Partial<{
+    name: string;
+    code: string | null;
+    description: string | null;
+    active: boolean;
+}>;
+
+export async function patchWorkspace(id: number, payload: PatchWorkspacePayload): Promise<Workspace> {
+    const { data } = await http.patch<ApiEnvelope<Workspace>>(`${apiV1}/workspaces/${id}`, payload);
+
+    return data.data;
+}
+
+export async function patchWorkspaceMemberActive(
+    workspaceId: number,
+    userId: number,
+    active: boolean,
+): Promise<WorkspaceMember> {
+    const { data } = await http.patch<ApiEnvelope<WorkspaceMember>>(
+        `${apiV1}/workspaces/${workspaceId}/members/${userId}`,
+        { active },
+    );
+
+    return data.data;
+}

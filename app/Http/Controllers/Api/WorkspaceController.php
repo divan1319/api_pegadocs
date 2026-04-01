@@ -11,6 +11,7 @@ use App\Models\Workspace;
 use App\Models\WorkspaceMember;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\Response;
 
 class WorkspaceController extends Controller
@@ -23,7 +24,12 @@ class WorkspaceController extends Controller
         $workspaces = Workspace::query()
             ->where(function ($q) use ($user): void {
                 $q->where('owner_id', $user->id)
-                    ->orWhereHas('members', fn ($m) => $m->where('user_id', $user->id));
+                    ->orWhere(function ($q2) use ($user): void {
+                        $q2->where('active', true)
+                            ->whereHas('members', function ($m) use ($user): void {
+                                $m->where('user_id', $user->id)->where('active', true);
+                            });
+                    });
             })
             ->orderBy('name')
             ->get();
@@ -86,6 +92,27 @@ class WorkspaceController extends Controller
         $code = $request->validated('code');
         $workspace = Workspace::query()->where('code', $code)->firstOrFail();
         $user = $request->user();
+
+        if (! $workspace->active) {
+            throw ValidationException::withMessages([
+                'code' => ['Este workspace no está activo y no admite nuevas incorporaciones.'],
+            ]);
+        }
+
+        $existing = WorkspaceMember::query()
+            ->where('workspace_id', $workspace->id)
+            ->where('user_id', $user->id)
+            ->first();
+
+        if ($existing !== null) {
+            if (! $existing->active) {
+                throw ValidationException::withMessages([
+                    'code' => ['Tu acceso a este workspace fue desactivado. Contacta al dueño si necesitas volver a entrar.'],
+                ]);
+            }
+
+            return (new WorkspaceResource($workspace))->response();
+        }
 
         if ($user->canAccessWorkspace($workspace)) {
             return (new WorkspaceResource($workspace))->response();

@@ -25,12 +25,12 @@ class SubmissionPolicy
 
     public function update(User $user, Submission $submission): bool
     {
-        return $user->canManageAssignment($submission->assignment);
+        return $user->isWorkspaceOwner($submission->assignment->workspace);
     }
 
     public function delete(User $user, Submission $submission): bool
     {
-        if ($user->canManageAssignment($submission->assignment)) {
+        if ($user->isWorkspaceOwner($submission->assignment->workspace)) {
             return true;
         }
 

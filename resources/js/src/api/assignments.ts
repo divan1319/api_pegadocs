@@ -51,3 +51,18 @@ export async function patchAssignmentStatus(
 export async function deleteAssignment(assignmentId: number): Promise<void> {
     await http.delete(`${apiV1}/assignments/${assignmentId}`);
 }
+
+export type PatchAssignmentPayload = Partial<
+    StoreAssignmentPayload & {
+        active: boolean;
+    }
+>;
+
+export async function patchAssignment(
+    assignmentId: number,
+    payload: PatchAssignmentPayload,
+): Promise<Assignment> {
+    const { data } = await http.patch<ApiEnvelope<Assignment>>(`${apiV1}/assignments/${assignmentId}`, payload);
+
+    return data.data;
+}

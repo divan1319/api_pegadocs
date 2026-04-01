@@ -26,7 +26,8 @@ class AssignmentController extends Controller
             ->orderByDesc('created_at');
 
         if (! $user->isWorkspaceOwner($workspace)) {
-            $query->whereHas('members', fn ($q) => $q->where('user_id', $user->id));
+            $query->where('active', true)
+                ->whereHas('members', fn ($q) => $q->where('user_id', $user->id)->where('active', true));
         }
 
         $assignments = $query->get();

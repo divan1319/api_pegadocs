@@ -24,22 +24,12 @@ class WorkspaceMemberPolicy
 
     public function update(User $user, WorkspaceMember $workspaceMember): bool
     {
-        return false;
+        return $this->ownerMayManageMember($user, $workspaceMember);
     }
 
     public function delete(User $user, WorkspaceMember $workspaceMember): bool
     {
-        $workspace = $workspaceMember->workspace;
-
-        if (! $user->canAdminWorkspace($workspace)) {
-            return false;
-        }
-
-        if ((int) $workspaceMember->user_id === (int) $workspace->owner_id) {
-            return false;
-        }
-
-        return true;
+        return $this->ownerMayManageMember($user, $workspaceMember);
     }
 
     public function restore(User $user, WorkspaceMember $workspaceMember): bool
@@ -50,5 +40,16 @@ class WorkspaceMemberPolicy
     public function forceDelete(User $user, WorkspaceMember $workspaceMember): bool
     {
         return false;
+    }
+
+    private function ownerMayManageMember(User $user, WorkspaceMember $workspaceMember): bool
+    {
+        $workspace = $workspaceMember->workspace;
+
+        if (! $user->isWorkspaceOwner($workspace)) {
+            return false;
+        }
+
+        return (int) $workspaceMember->user_id !== (int) $workspace->owner_id;
     }
 }

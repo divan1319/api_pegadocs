@@ -79,6 +79,12 @@ class SubmissionController extends Controller
             ]);
         }
 
+        if (! $assignmentMember->active) {
+            throw ValidationException::withMessages([
+                'assignment_member_id' => ['Tu participación en esta tarea está desactivada.'],
+            ]);
+        }
+
         try {
             $submission = $this->submissionService->store(
                 $assignment,

@@ -30,7 +30,10 @@
         <UAlert v-else-if="assignmentError" color="error" title="No se pudo cargar la tarea" />
 
         <template v-else-if="assignment">
-            <UPageHeader :title="assignment.name" :description="assignment.description ?? undefined" />
+            <div class="flex flex-wrap items-start gap-3">
+                <UPageHeader :title="assignment.name" :description="assignment.description ?? undefined" class="flex-1" />
+                <UBadge v-if="!assignment.active" color="warning" variant="subtle" class="shrink-0">Tarea inactiva</UBadge>
+            </div>
 
             <div class="flex flex-wrap gap-2">
                 <UBadge color="neutral">{{ assignment.status }}</UBadge>
@@ -38,6 +41,24 @@
                     Entrega: {{ formatDate(assignment.deadline) }}
                 </span>
             </div>
+
+            <UCard v-if="canManage">
+                <template #header>
+                    <h2 class="text-highlighted font-semibold">Configuración de la tarea</h2>
+                </template>
+                <form class="flex max-w-xl flex-col gap-4" @submit.prevent="onSaveAssignment">
+                    <UFormField label="Nombre" required>
+                        <UInput v-model="assignmentNameEdit" />
+                    </UFormField>
+                    <UFormField
+                        label="Tarea activa"
+                        description="Si la desactivas, los participantes dejan de verla y acceder (el dueño del workspace sigue viéndola)."
+                    >
+                        <USwitch v-model="assignmentActiveEdit" />
+                    </UFormField>
+                    <UButton type="submit" :loading="saveAssignmentMut.isPending.value">Guardar cambios</UButton>
+                </form>
+            </UCard>
 
             <UCard>
                 <template #header>
@@ -48,11 +69,11 @@
                         </p>
                     </div>
                 </template>
-                <div v-if="members?.length" class="flex flex-wrap gap-2">
+                <div v-if="members?.length" class="flex flex-col gap-3">
                     <div
                         v-for="m in members"
                         :key="m.id"
-                        class="border-default bg-muted/15 inline-flex max-w-full items-center gap-1 rounded-full border py-1 pl-3 pr-1"
+                        class="border-default bg-muted/15 flex max-w-full flex-wrap items-center gap-2 rounded-xl border px-3 py-2"
                     >
                         <span class="truncate text-sm font-medium">
                             {{ m.user?.name ?? `Usuario #${m.userId}` }}
@@ -60,17 +81,29 @@
                         <UBadge color="neutral" variant="subtle" size="xs" class="shrink-0">
                             {{ m.status }}
                         </UBadge>
-                        <UButton
-                            v-if="canManage"
-                            color="neutral"
-                            variant="ghost"
-                            size="xs"
-                            icon="i-lucide-user-minus"
-                            class="shrink-0 rounded-full"
-                            :loading="removingMemberUserId === m.userId"
-                            :aria-label="`Quitar a ${m.user?.name ?? m.userId}`"
-                            @click="onRemoveAssignmentMember(m.userId)"
-                        />
+                        <UBadge v-if="!m.active" color="warning" variant="subtle" size="xs" class="shrink-0">
+                            Participación desactivada
+                        </UBadge>
+                        <div v-if="canManage" class="ml-auto flex flex-wrap gap-1">
+                            <UButton
+                                v-if="m.active"
+                                color="error"
+                                variant="soft"
+                                size="xs"
+                                @click="openTaskMemberModal(m, 'deactivate')"
+                            >
+                                Desactivar en tarea
+                            </UButton>
+                            <UButton
+                                v-else
+                                color="primary"
+                                variant="soft"
+                                size="xs"
+                                @click="openTaskMemberModal(m, 'reactivate')"
+                            >
+                                Reactivar en tarea
+                            </UButton>
+                        </div>
                     </div>
                 </div>
                 <p v-else class="text-muted text-sm">Aún no hay participantes en esta tarea.</p>
@@ -81,7 +114,8 @@
                     <h2 class="text-highlighted font-semibold">Añadir participante</h2>
                 </template>
                 <p class="text-muted mb-4 text-sm">
-                    Solo aparecen miembros del workspace que aún no están en esta tarea.
+                    Solo miembros activos del workspace que aún no están en esta tarea (o que fueron quitados del listado
+                    activo).
                 </p>
                 <form class="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end" @submit.prevent="onAddMember">
                     <UFormField label="Miembro del workspace" class="min-w-[260px] flex-1" required>
@@ -103,7 +137,7 @@
                     </UButton>
                 </form>
                 <p v-if="addMemberSelectItems.length === 0" class="text-muted mt-3 text-sm">
-                    Todos los miembros del workspace ya están asignados a esta tarea.
+                    No hay miembros activos del workspace disponibles para añadir.
                 </p>
             </UCard>
 
@@ -115,17 +149,27 @@
                             <span class="font-medium">
                                 {{ m.user?.name ?? `Usuario #${m.userId}` }}
                             </span>
-                            <UBadge color="neutral" variant="subtle">Participación: {{ m.status }}</UBadge>
+                            <div class="flex flex-wrap gap-2">
+                                <UBadge color="neutral" variant="subtle">Participación: {{ m.status }}</UBadge>
+                                <UBadge v-if="!m.active" color="warning" variant="subtle">Desactivada</UBadge>
+                            </div>
                         </div>
                     </template>
 
-                    <div v-if="m.userId === user?.id" class="mb-4 space-y-2">
+                    <div v-if="m.userId === user?.id && m.active" class="mb-4 space-y-2">
                         <UFormField label="Subir archivo (PDF o imagen)">
                             <UInput type="file" accept=".pdf,image/*" @change="onFileInput($event, m.id)" />
                         </UFormField>
                         <UProgress v-if="uploadProgressFor === m.id" :model-value="uploadPercent" />
                         <p v-if="uploadProgressFor === m.id" class="text-muted text-xs">{{ uploadPercent }}%</p>
                     </div>
+                    <UAlert
+                        v-else-if="m.userId === user?.id && !m.active"
+                        color="warning"
+                        variant="subtle"
+                        title="Tu participación está desactivada"
+                        description="El dueño del workspace puede reactivarla desde esta misma página."
+                    />
 
                     <ul v-if="submissionsForMember(m.id).length" class="space-y-3">
                         <li
@@ -172,19 +216,39 @@
                 </UCard>
             </div>
         </template>
+
+        <UModal
+            v-model:open="taskMemberModalOpen"
+            :title="taskMemberModalTitle"
+            :description="taskMemberModalDescription"
+        >
+            <template #footer="{ close }">
+                <div class="flex w-full flex-wrap justify-end gap-2">
+                    <UButton variant="ghost" color="neutral" @click="closeTaskMemberModal(close)">Cancelar</UButton>
+                    <UButton
+                        :color="taskMemberModalMode === 'reactivate' ? 'primary' : 'error'"
+                        :loading="taskMemberActionLoading"
+                        @click="confirmTaskMember(close)"
+                    >
+                        Confirmar
+                    </UButton>
+                </div>
+            </template>
+        </UModal>
     </UContainer>
 </template>
 
 <script setup lang="ts">
 import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query';
 import axios from 'axios';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { useToast } from '@nuxt/ui/composables';
-import { fetchAssignment } from '@/api/assignments';
+import { fetchAssignment, patchAssignment } from '@/api/assignments';
 import {
     addAssignmentMember,
     fetchAssignmentMembers,
+    patchAssignmentMemberActive,
     removeAssignmentMember,
 } from '@/api/assignmentMembers';
 import { fetchWorkspaceMembers } from '@/api/workspaces';
@@ -206,16 +270,34 @@ const { user } = useAuth();
 const assignmentId = computed(() => Number(route.params.assignmentId));
 
 const selectedWorkspaceUserId = ref<number | undefined>(undefined);
-const removingMemberUserId = ref<number | null>(null);
 const uploadProgressFor = ref<number | null>(null);
 const uploadPercent = ref(0);
 const deletingSubmissionId = ref<number | null>(null);
+const assignmentNameEdit = ref('');
+const assignmentActiveEdit = ref(true);
+
+const taskMemberModalOpen = ref(false);
+const taskMemberModalMode = ref<'deactivate' | 'reactivate'>('deactivate');
+const taskMemberTargetUserId = ref<number | null>(null);
+const taskMemberTargetName = ref('');
+const taskMemberActionLoading = ref(false);
 
 const { data: assignment, isPending: assignmentPending, isError: assignmentError } = useQuery({
     queryKey: ['assignment', assignmentId],
     queryFn: () => fetchAssignment(assignmentId.value),
     enabled: computed(() => Number.isFinite(assignmentId.value) && assignmentId.value > 0),
 });
+
+watch(
+    () => assignment.value,
+    (a) => {
+        if (a) {
+            assignmentNameEdit.value = a.name;
+            assignmentActiveEdit.value = a.active;
+        }
+    },
+    { immediate: true },
+);
 
 const { data: members, isPending: membersPending } = useQuery({
     queryKey: ['assignment-members', assignmentId],
@@ -231,13 +313,14 @@ const { data: workspaceMembers, isPending: workspaceMembersPending } = useQuery(
     enabled: computed(() => workspaceId.value !== null && workspaceId.value > 0),
 });
 
+/** Participantes con fila en la tarea (activos o no): no deben aparecer en el selector de alta salvo que estén inactivos y el dueño los vuelva a añadir vía reactivación en UI. */
 const assignmentParticipantUserIds = computed(() => new Set(members.value?.map((m) => m.userId) ?? []));
 
 const addMemberSelectItems = computed(() => {
     const ws = workspaceMembers.value ?? [];
 
     return ws
-        .filter((wm) => !assignmentParticipantUserIds.value.has(wm.userId))
+        .filter((wm) => wm.active && !assignmentParticipantUserIds.value.has(wm.userId))
         .map((wm) => ({
             label: formatWorkspaceMemberOptionLabel(wm),
             value: wm.userId,
@@ -255,18 +338,29 @@ const canManage = computed(() => {
         return false;
     }
 
-    const uid = user.value.id;
-    const a = assignment.value;
-
-    return a.createdBy === uid || a.workspaceOwnerId === uid;
+    return assignment.value.workspaceOwnerId === user.value.id;
 });
 
 const canMerge = computed(() => {
-    if (!assignment.value || assignment.value.status !== 'open') {
+    if (!assignment.value || assignment.value.status !== 'open' || !assignment.value.active) {
         return false;
     }
 
     return submissions.value?.some((s) => submissionIsMergeable(s)) ?? false;
+});
+
+const taskMemberModalTitle = computed(() =>
+    taskMemberModalMode.value === 'reactivate' ? 'Reactivar participación' : 'Desactivar participación en la tarea',
+);
+
+const taskMemberModalDescription = computed(() => {
+    const name = taskMemberTargetName.value || 'esta persona';
+
+    if (taskMemberModalMode.value === 'reactivate') {
+        return `${name} volverá a poder ver la tarea y subir entregas si sigue siendo miembro activo del workspace.`;
+    }
+
+    return `${name} dejará de poder participar en esta tarea (las entregas existentes se conservan). Puedes reactivar la participación más adelante.`;
 });
 
 function submissionsForMember(memberPk: number): Submission[] {
@@ -290,6 +384,84 @@ function formatWorkspaceMemberOptionLabel(wm: WorkspaceMember): string {
     }
 
     return name;
+}
+
+function openTaskMemberModal(m: AssignmentMember, mode: 'deactivate' | 'reactivate'): void {
+    taskMemberModalMode.value = mode;
+    taskMemberTargetUserId.value = m.userId;
+    taskMemberTargetName.value = m.user?.name?.trim() || `Usuario #${m.userId}`;
+    taskMemberModalOpen.value = true;
+}
+
+function closeTaskMemberModal(close?: () => void): void {
+    taskMemberModalOpen.value = false;
+    taskMemberTargetUserId.value = null;
+    close?.();
+}
+
+async function confirmTaskMember(close?: () => void): Promise<void> {
+    const uid = taskMemberTargetUserId.value;
+    if (uid === null) {
+        return;
+    }
+
+    taskMemberActionLoading.value = true;
+
+    try {
+        if (taskMemberModalMode.value === 'deactivate') {
+            await removeAssignmentMember(assignmentId.value, uid);
+            toast.add({ title: 'Participación desactivada en la tarea', color: 'success' });
+        } else {
+            await patchAssignmentMemberActive(assignmentId.value, uid, true);
+            toast.add({ title: 'Participación reactivada', color: 'success' });
+        }
+
+        await queryClient.invalidateQueries({ queryKey: ['assignment-members', assignmentId] });
+        closeTaskMemberModal(close);
+    } catch (e: unknown) {
+        toast.add({
+            title: 'No se pudo actualizar',
+            description: axios.isAxiosError(e)
+                ? String(e.response?.data?.message ?? JSON.stringify(e.response?.data))
+                : String(e),
+            color: 'error',
+        });
+    } finally {
+        taskMemberActionLoading.value = false;
+    }
+}
+
+const saveAssignmentMut = useMutation({
+    mutationFn: async () => {
+        if (!assignment.value) {
+            return;
+        }
+
+        await patchAssignment(assignment.value.id, {
+            name: assignmentNameEdit.value.trim(),
+            active: assignmentActiveEdit.value,
+        });
+    },
+    onSuccess: async () => {
+        await queryClient.invalidateQueries({ queryKey: ['assignment', assignmentId] });
+        await queryClient.invalidateQueries({ queryKey: ['assignments'] });
+        toast.add({ title: 'Tarea actualizada', color: 'success' });
+    },
+    onError: (e: unknown) => {
+        toast.add({
+            title: 'No se pudo guardar',
+            description: axios.isAxiosError(e) ? String(e.response?.data?.message ?? e.message) : undefined,
+            color: 'error',
+        });
+    },
+});
+
+function onSaveAssignment(): void {
+    if (!assignmentNameEdit.value.trim()) {
+        return;
+    }
+
+    saveAssignmentMut.mutate();
 }
 
 const addMemberMut = useMutation({
@@ -319,26 +491,6 @@ const addMemberMut = useMutation({
 
 function onAddMember(): void {
     addMemberMut.mutate();
-}
-
-async function onRemoveAssignmentMember(userId: number): Promise<void> {
-    removingMemberUserId.value = userId;
-
-    try {
-        await removeAssignmentMember(assignmentId.value, userId);
-        await queryClient.invalidateQueries({ queryKey: ['assignment-members', assignmentId] });
-        toast.add({ title: 'Participante quitado de la tarea', color: 'success' });
-    } catch (e: unknown) {
-        toast.add({
-            title: 'No se pudo quitar',
-            description: axios.isAxiosError(e)
-                ? String(e.response?.data?.message ?? JSON.stringify(e.response?.data))
-                : String(e),
-            color: 'error',
-        });
-    } finally {
-        removingMemberUserId.value = null;
-    }
 }
 
 async function onFileInput(ev: Event, assignmentMemberId: number): Promise<void> {

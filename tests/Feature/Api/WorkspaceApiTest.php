@@ -98,4 +98,66 @@ class WorkspaceApiTest extends TestCase
             'role' => 'member',
         ]);
     }
+
+    public function test_join_fails_with_clear_message_when_workspace_member_is_inactive(): void
+    {
+        $owner = User::factory()->create();
+        $joiner = User::factory()->create();
+
+        $workspace = Workspace::query()->create([
+            'owner_id' => $owner->id,
+            'name' => 'WS',
+            'code' => 'codigo-inactivo',
+            'description' => null,
+        ]);
+
+        WorkspaceMember::query()->create([
+            'workspace_id' => $workspace->id,
+            'user_id' => $owner->id,
+            'role' => 'owner',
+        ]);
+
+        WorkspaceMember::query()->create([
+            'workspace_id' => $workspace->id,
+            'user_id' => $joiner->id,
+            'role' => 'member',
+            'active' => false,
+        ]);
+
+        $this->actingAs($joiner)
+            ->withHeaders($this->spaHeaders())
+            ->postJson('/api/v1/workspaces/join', [
+                'code' => 'codigo-inactivo',
+            ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['code']);
+    }
+
+    public function test_join_fails_when_workspace_is_inactive(): void
+    {
+        $owner = User::factory()->create();
+        $joiner = User::factory()->create();
+
+        $workspace = Workspace::query()->create([
+            'owner_id' => $owner->id,
+            'name' => 'WS',
+            'code' => 'ws-off',
+            'description' => null,
+            'active' => false,
+        ]);
+
+        WorkspaceMember::query()->create([
+            'workspace_id' => $workspace->id,
+            'user_id' => $owner->id,
+            'role' => 'owner',
+        ]);
+
+        $this->actingAs($joiner)
+            ->withHeaders($this->spaHeaders())
+            ->postJson('/api/v1/workspaces/join', [
+                'code' => 'ws-off',
+            ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['code']);
+    }
 }

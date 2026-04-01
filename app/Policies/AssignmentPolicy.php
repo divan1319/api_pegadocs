@@ -25,17 +25,17 @@ class AssignmentPolicy
 
     public function update(User $user, Assignment $assignment): bool
     {
-        return $user->canManageAssignment($assignment);
+        return $user->isWorkspaceOwner($assignment->workspace);
     }
 
     public function delete(User $user, Assignment $assignment): bool
     {
-        return $user->canManageAssignment($assignment);
+        return $user->isWorkspaceOwner($assignment->workspace);
     }
 
     public function updateStatus(User $user, Assignment $assignment): bool
     {
-        return $user->canManageAssignment($assignment);
+        return $user->isWorkspaceOwner($assignment->workspace);
     }
 
     public function restore(User $user, Assignment $assignment): bool

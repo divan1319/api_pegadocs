@@ -24,7 +24,7 @@ class WorkspacePolicy
 
     public function update(User $user, Workspace $workspace): bool
     {
-        return $user->canAdminWorkspace($workspace);
+        return $user->isWorkspaceOwner($workspace);
     }
 
     public function delete(User $user, Workspace $workspace): bool

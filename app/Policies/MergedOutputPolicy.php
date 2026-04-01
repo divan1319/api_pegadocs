@@ -30,7 +30,7 @@ class MergedOutputPolicy
 
     public function delete(User $user, MergedOutput $mergedOutput): bool
     {
-        return $user->canManageAssignment($mergedOutput->assignment);
+        return $user->isWorkspaceOwner($mergedOutput->assignment->workspace);
     }
 
     public function restore(User $user, MergedOutput $mergedOutput): bool

@@ -20,17 +20,17 @@ class AssignmentMemberPolicy
 
     public function create(User $user, Assignment $assignment): bool
     {
-        return $user->canManageAssignment($assignment);
+        return $user->isWorkspaceOwner($assignment->workspace);
     }
 
     public function update(User $user, AssignmentMember $assignmentMember): bool
     {
-        return $user->canManageAssignment($assignmentMember->assignment);
+        return $user->isWorkspaceOwner($assignmentMember->assignment->workspace);
     }
 
     public function delete(User $user, AssignmentMember $assignmentMember): bool
     {
-        return $user->canManageAssignment($assignmentMember->assignment);
+        return $user->isWorkspaceOwner($assignmentMember->assignment->workspace);
     }
 
     public function restore(User $user, AssignmentMember $assignmentMember): bool
