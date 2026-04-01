@@ -5,36 +5,73 @@
             description="Crea un grupo o únete con el código que te compartieron."
         />
 
-        <div class="grid gap-8 lg:grid-cols-2">
-            <UCard>
+        <div class="grid grid-cols-1 gap-6 sm:gap-8 lg:grid-cols-2 lg:items-stretch">
+            <UCard class="min-w-0">
                 <template #header>
                     <h2 class="text-highlighted font-semibold">Nuevo workspace</h2>
                 </template>
-                <form class="space-y-4" @submit.prevent="onCreateWorkspace">
-                    <UFormField label="Nombre" required>
-                        <UInput v-model="createName" placeholder="Ej. Diseño 2026" />
+                <form
+                    class="flex w-full min-w-0 flex-col gap-4 sm:gap-5"
+                    @submit.prevent="onCreateWorkspace"
+                >
+                    <div class="grid grid-cols-1 gap-4 md:grid-cols-1 md:items-start md:gap-x-4">
+                        <UFormField label="Nombre" required class="min-w-0">
+                            <UInput
+                                v-model="createName"
+                                class="block w-full min-w-0"
+                                placeholder="Ej. Diseño 2026"
+                            />
+                        </UFormField>
+                    </div>
+                    <UFormField label="Descripción" class="min-w-0 w-full">
+                        <UTextarea
+                            v-model="createDescription"
+                            class="block w-full min-w-0 min-h-30 resize-y"
+                            :rows="4"
+                            autoresize
+                        />
                     </UFormField>
-                    <UFormField label="Código (opcional)" hint="Si lo dejas vacío, se genera uno automático.">
-                        <UInput v-model="createCode" placeholder="mi-grupo" />
-                    </UFormField>
-                    <UFormField label="Descripción">
-                        <UTextarea v-model="createDescription" autoresize />
-                    </UFormField>
-                    <UButton type="submit" :loading="createMut.isPending.value">Crear workspace</UButton>
+                    <div class="flex flex-col gap-3 pt-1 sm:flex-row sm:justify-end">
+                        <UButton
+                            type="submit"
+                            class="w-full justify-center sm:w-auto"
+                            :loading="createMut.isPending.value"
+                        >
+                            Crear workspace
+                        </UButton>
+                    </div>
                 </form>
             </UCard>
 
-            <UCard>
+            <UCard class="min-w-0">
                 <template #header>
                     <h2 class="text-highlighted font-semibold">Unirme con código</h2>
                 </template>
-                <form class="space-y-4" @submit.prevent="onJoinWorkspace">
-                    <UFormField label="Código del workspace" required>
-                        <UInput v-model="joinCode" placeholder="Pega el código" />
+                <form
+                    class="flex w-full min-w-0 flex-col gap-4 sm:gap-5"
+                    @submit.prevent="onJoinWorkspace"
+                >
+                    <UFormField label="Código del workspace" required class="min-w-0 w-full">
+                        <UInput
+                            v-model="joinCode"
+                            class="block w-full min-w-0"
+                            placeholder="Pega el código"
+                            autocomplete="off"
+                            autocapitalize="off"
+                            spellcheck="false"
+                        />
                     </UFormField>
-                    <UButton type="submit" color="neutral" variant="subtle" :loading="joinMut.isPending.value">
-                        Unirme
-                    </UButton>
+                    <div class="flex flex-col gap-3 pt-1 sm:flex-row sm:justify-end">
+                        <UButton
+                            type="submit"
+                            color="neutral"
+                            variant="outline"
+                            class="w-full justify-center sm:w-auto"
+                            :loading="joinMut.isPending.value"
+                        >
+                            Unirme
+                        </UButton>
+                    </div>
                 </form>
             </UCard>
         </div>
