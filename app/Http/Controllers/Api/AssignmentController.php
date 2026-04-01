@@ -20,10 +20,16 @@ class AssignmentController extends Controller
     {
         $this->authorize('view', $workspace);
 
-        $assignments = $workspace->assignments()
+        $user = $request->user();
+        $query = $workspace->assignments()
             ->with('workspace')
-            ->orderByDesc('created_at')
-            ->get();
+            ->orderByDesc('created_at');
+
+        if (! $user->isWorkspaceOwner($workspace)) {
+            $query->whereHas('members', fn ($q) => $q->where('user_id', $user->id));
+        }
+
+        $assignments = $query->get();
 
         return AssignmentResource::collection($assignments)->response();
     }

@@ -20,7 +20,7 @@ class AssignmentPolicy
 
     public function create(User $user, Workspace $workspace): bool
     {
-        return $user->canAccessWorkspace($workspace);
+        return $user->isWorkspaceOwner($workspace);
     }
 
     public function update(User $user, Assignment $assignment): bool

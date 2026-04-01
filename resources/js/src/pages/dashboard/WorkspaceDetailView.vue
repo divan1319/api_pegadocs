@@ -4,7 +4,7 @@
             <UButton to="/dashboard" variant="ghost" color="neutral" icon="i-lucide-arrow-left">Volver</UButton>
         </div>
 
-        <div v-if="workspacePending || assignmentsPending" class="space-y-2">
+        <div v-if="workspacePending || assignmentsPending || membersPending" class="space-y-2">
             <USkeleton class="h-12 w-2/3" />
             <USkeleton class="h-24 w-full" />
         </div>
@@ -15,6 +15,38 @@
             <UPageHeader :title="workspace.name" :description="`Código: ${workspace.code}`" />
 
             <UCard>
+                <template #header>
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                        <h2 class="text-highlighted font-semibold">Miembros del workspace</h2>
+                        <UBadge v-if="workspaceMembers?.length" color="neutral" variant="subtle">
+                            {{ workspaceMembers.length }}
+                        </UBadge>
+                    </div>
+                </template>
+                <div
+                    v-if="workspaceMembers?.length"
+                    class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"
+                >
+                    <div
+                        v-for="m in workspaceMembers"
+                        :key="m.id"
+                        class="border-default bg-muted/20 hover:bg-muted/40 rounded-xl border p-4 transition-colors"
+                    >
+                        <UUser
+                            size="lg"
+                            orientation="vertical"
+                            class="w-full"
+                            :name="m.user?.name ?? `Usuario #${m.userId}`"
+                            :description="memberSubtitle(m)"
+                            :avatar="{ text: initials(m.user?.name ?? '?') }"
+                            :chip="memberChip(m)"
+                        />
+                    </div>
+                </div>
+                <p v-else class="text-muted text-sm">No hay miembros listados.</p>
+            </UCard>
+
+            <UCard v-if="isWorkspaceOwner">
                 <template #header>
                     <h2 class="text-highlighted font-semibold">Nueva tarea</h2>
                 </template>
@@ -34,6 +66,14 @@
                     <UButton type="submit" :loading="createAssignmentMut.isPending.value">Crear</UButton>
                 </form>
             </UCard>
+
+            <UAlert
+                v-else
+                color="info"
+                variant="subtle"
+                title="Solo el dueño del workspace puede crear tareas"
+                description="Puedes participar en las tareas en las que te hayan añadido. Si necesitas una tarea nueva, pídeselo al dueño."
+            />
 
             <div>
                 <h2 class="text-highlighted mb-3 text-lg font-semibold">Tareas</h2>
@@ -78,9 +118,9 @@ import { computed, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { useToast } from '@nuxt/ui/composables';
 import { createAssignment, deleteAssignment, fetchAssignmentsForWorkspace } from '@/api/assignments';
-import { fetchWorkspace } from '@/api/workspaces';
+import { fetchWorkspace, fetchWorkspaceMembers } from '@/api/workspaces';
 import { useAuth } from '@/composables/useAuth';
-import type { Assignment } from '@/types/pegadocs';
+import type { Assignment, WorkspaceMember } from '@/types/pegadocs';
 
 const route = useRoute();
 const toast = useToast();
@@ -104,6 +144,56 @@ const { data: assignments, isPending: assignmentsPending } = useQuery({
     queryFn: () => fetchAssignmentsForWorkspace(workspaceId.value),
     enabled: computed(() => Number.isFinite(workspaceId.value) && workspaceId.value > 0),
 });
+
+const { data: workspaceMembers, isPending: membersPending } = useQuery({
+    queryKey: ['workspace-members', workspaceId],
+    queryFn: () => fetchWorkspaceMembers(workspaceId.value),
+    enabled: computed(() => Number.isFinite(workspaceId.value) && workspaceId.value > 0),
+});
+
+const isWorkspaceOwner = computed(() => {
+    if (!user.value || !workspace.value) {
+        return false;
+    }
+
+    return user.value.id === workspace.value.ownerId;
+});
+
+function initials(name: string): string {
+    const parts = name.trim().split(/\s+/).filter(Boolean);
+
+    if (parts.length === 0) {
+        return '?';
+    }
+
+    if (parts.length === 1) {
+        return parts[0].slice(0, 2).toUpperCase();
+    }
+
+    return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
+}
+
+function memberSubtitle(m: WorkspaceMember): string {
+    const email = m.user?.email;
+
+    if (email) {
+        return email;
+    }
+
+    return m.role === 'owner' ? 'Rol: owner' : 'Rol: member';
+}
+
+function memberChip(m: WorkspaceMember): { label: string; color: 'primary' | 'neutral' } {
+    if (workspace.value && m.userId === workspace.value.ownerId) {
+        return { label: 'Dueño', color: 'primary' };
+    }
+
+    if (m.role === 'owner') {
+        return { label: 'Admin', color: 'neutral' };
+    }
+
+    return { label: 'Miembro', color: 'neutral' };
+}
 
 function canManageAssignment(a: Assignment): boolean {
     if (!user.value) {

@@ -86,9 +86,16 @@ class User extends Authenticatable
             ->exists();
     }
 
+    /**
+     * Puede ver/participar en la tarea: dueño del workspace (ve todas) o miembro explícito en assignment_members.
+     */
     public function canAccessAssignment(Assignment $assignment): bool
     {
-        return $this->canAccessWorkspace($assignment->workspace);
+        if ($this->isWorkspaceOwner($assignment->workspace)) {
+            return true;
+        }
+
+        return $assignment->members()->where('user_id', $this->id)->exists();
     }
 
     /**

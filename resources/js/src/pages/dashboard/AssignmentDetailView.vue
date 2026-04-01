@@ -19,7 +19,10 @@
             </UButton>
         </div>
 
-        <div v-if="assignmentPending || membersPending || submissionsPending" class="space-y-2">
+        <div
+            v-if="assignmentPending || membersPending || submissionsPending || workspaceMembersPending"
+            class="space-y-2"
+        >
             <USkeleton class="h-12 w-2/3" />
             <USkeleton class="h-32 w-full" />
         </div>
@@ -36,19 +39,72 @@
                 </span>
             </div>
 
+            <UCard>
+                <template #header>
+                    <div>
+                        <h2 class="text-highlighted font-semibold">Participantes de esta tarea</h2>
+                        <p class="text-muted mt-1 text-sm">
+                            Quienes pueden entregar archivos. Más abajo verás el detalle de subidas por persona.
+                        </p>
+                    </div>
+                </template>
+                <div v-if="members?.length" class="flex flex-wrap gap-2">
+                    <div
+                        v-for="m in members"
+                        :key="m.id"
+                        class="border-default bg-muted/15 inline-flex max-w-full items-center gap-1 rounded-full border py-1 pl-3 pr-1"
+                    >
+                        <span class="truncate text-sm font-medium">
+                            {{ m.user?.name ?? `Usuario #${m.userId}` }}
+                        </span>
+                        <UBadge color="neutral" variant="subtle" size="xs" class="shrink-0">
+                            {{ m.status }}
+                        </UBadge>
+                        <UButton
+                            v-if="canManage"
+                            color="neutral"
+                            variant="ghost"
+                            size="xs"
+                            icon="i-lucide-user-minus"
+                            class="shrink-0 rounded-full"
+                            :loading="removingMemberUserId === m.userId"
+                            :aria-label="`Quitar a ${m.user?.name ?? m.userId}`"
+                            @click="onRemoveAssignmentMember(m.userId)"
+                        />
+                    </div>
+                </div>
+                <p v-else class="text-muted text-sm">Aún no hay participantes en esta tarea.</p>
+            </UCard>
+
             <UCard v-if="canManage">
                 <template #header>
                     <h2 class="text-highlighted font-semibold">Añadir participante</h2>
                 </template>
-                <p class="text-muted mb-3 text-sm">
-                    El usuario debe ser ya miembro del workspace. Indica su ID numérico (por ahora).
+                <p class="text-muted mb-4 text-sm">
+                    Solo aparecen miembros del workspace que aún no están en esta tarea.
                 </p>
-                <form class="flex flex-wrap items-end gap-3" @submit.prevent="onAddMember">
-                    <UFormField label="ID de usuario" required>
-                        <UInput v-model.number="newMemberUserId" type="number" min="1" class="w-40" />
+                <form class="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end" @submit.prevent="onAddMember">
+                    <UFormField label="Miembro del workspace" class="min-w-[260px] flex-1" required>
+                        <USelect
+                            v-model="selectedWorkspaceUserId"
+                            class="w-full"
+                            placeholder="Selecciona una persona…"
+                            :items="addMemberSelectItems"
+                            value-key="value"
+                            label-key="label"
+                        />
                     </UFormField>
-                    <UButton type="submit" :loading="addMemberMut.isPending.value">Añadir</UButton>
+                    <UButton
+                        type="submit"
+                        :disabled="selectedWorkspaceUserId === undefined || addMemberSelectItems.length === 0"
+                        :loading="addMemberMut.isPending.value"
+                    >
+                        Añadir a la tarea
+                    </UButton>
                 </form>
+                <p v-if="addMemberSelectItems.length === 0" class="text-muted mt-3 text-sm">
+                    Todos los miembros del workspace ya están asignados a esta tarea.
+                </p>
             </UCard>
 
             <div class="space-y-6">
@@ -126,7 +182,12 @@ import { computed, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { useToast } from '@nuxt/ui/composables';
 import { fetchAssignment } from '@/api/assignments';
-import { addAssignmentMember, fetchAssignmentMembers } from '@/api/assignmentMembers';
+import {
+    addAssignmentMember,
+    fetchAssignmentMembers,
+    removeAssignmentMember,
+} from '@/api/assignmentMembers';
+import { fetchWorkspaceMembers } from '@/api/workspaces';
 import {
     deleteSubmission,
     fetchSubmissions,
@@ -135,7 +196,7 @@ import {
 } from '@/api/submissions';
 import { useAuth } from '@/composables/useAuth';
 import { submissionIsMergeable } from '@/lib/pdfMerge';
-import type { Assignment, AssignmentMember, Submission } from '@/types/pegadocs';
+import type { Assignment, AssignmentMember, Submission, WorkspaceMember } from '@/types/pegadocs';
 
 const route = useRoute();
 const toast = useToast();
@@ -144,7 +205,8 @@ const { user } = useAuth();
 
 const assignmentId = computed(() => Number(route.params.assignmentId));
 
-const newMemberUserId = ref<number | null>(null);
+const selectedWorkspaceUserId = ref<number | undefined>(undefined);
+const removingMemberUserId = ref<number | null>(null);
 const uploadProgressFor = ref<number | null>(null);
 const uploadPercent = ref(0);
 const deletingSubmissionId = ref<number | null>(null);
@@ -159,6 +221,27 @@ const { data: members, isPending: membersPending } = useQuery({
     queryKey: ['assignment-members', assignmentId],
     queryFn: () => fetchAssignmentMembers(assignmentId.value),
     enabled: computed(() => Number.isFinite(assignmentId.value) && assignmentId.value > 0),
+});
+
+const workspaceId = computed(() => assignment.value?.workspaceId ?? null);
+
+const { data: workspaceMembers, isPending: workspaceMembersPending } = useQuery({
+    queryKey: ['workspace-members', workspaceId],
+    queryFn: () => fetchWorkspaceMembers(workspaceId.value!),
+    enabled: computed(() => workspaceId.value !== null && workspaceId.value > 0),
+});
+
+const assignmentParticipantUserIds = computed(() => new Set(members.value?.map((m) => m.userId) ?? []));
+
+const addMemberSelectItems = computed(() => {
+    const ws = workspaceMembers.value ?? [];
+
+    return ws
+        .filter((wm) => !assignmentParticipantUserIds.value.has(wm.userId))
+        .map((wm) => ({
+            label: formatWorkspaceMemberOptionLabel(wm),
+            value: wm.userId,
+        }));
 });
 
 const { data: submissions, isPending: submissionsPending } = useQuery({
@@ -198,17 +281,29 @@ function formatDate(iso: string): string {
     }
 }
 
+function formatWorkspaceMemberOptionLabel(wm: WorkspaceMember): string {
+    const name = wm.user?.name?.trim() || `Usuario #${wm.userId}`;
+    const email = wm.user?.email;
+
+    if (email) {
+        return `${name} · ${email}`;
+    }
+
+    return name;
+}
+
 const addMemberMut = useMutation({
     mutationFn: async () => {
-        if (newMemberUserId.value === null || newMemberUserId.value < 1) {
-            throw new Error('ID inválido');
+        const id = selectedWorkspaceUserId.value;
+        if (id === undefined || id < 1) {
+            throw new Error('Selecciona un miembro');
         }
 
-        await addAssignmentMember(assignmentId.value, newMemberUserId.value);
+        await addAssignmentMember(assignmentId.value, id);
     },
     onSuccess: async () => {
         await queryClient.invalidateQueries({ queryKey: ['assignment-members', assignmentId] });
-        newMemberUserId.value = null;
+        selectedWorkspaceUserId.value = undefined;
         toast.add({ title: 'Participante añadido', color: 'success' });
     },
     onError: (e: unknown) => {
@@ -224,6 +319,26 @@ const addMemberMut = useMutation({
 
 function onAddMember(): void {
     addMemberMut.mutate();
+}
+
+async function onRemoveAssignmentMember(userId: number): Promise<void> {
+    removingMemberUserId.value = userId;
+
+    try {
+        await removeAssignmentMember(assignmentId.value, userId);
+        await queryClient.invalidateQueries({ queryKey: ['assignment-members', assignmentId] });
+        toast.add({ title: 'Participante quitado de la tarea', color: 'success' });
+    } catch (e: unknown) {
+        toast.add({
+            title: 'No se pudo quitar',
+            description: axios.isAxiosError(e)
+                ? String(e.response?.data?.message ?? JSON.stringify(e.response?.data))
+                : String(e),
+            color: 'error',
+        });
+    } finally {
+        removingMemberUserId.value = null;
+    }
 }
 
 async function onFileInput(ev: Event, assignmentMemberId: number): Promise<void> {
