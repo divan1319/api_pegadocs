@@ -56,4 +56,50 @@ class User extends Authenticatable
     {
         return $this->hasMany(MergedOutput::class, 'generated_by');
     }
+
+    public function canAccessWorkspace(Workspace $workspace): bool
+    {
+        if ((int) $workspace->owner_id === (int) $this->id) {
+            return true;
+        }
+
+        return $workspace->members()->where('user_id', $this->id)->exists();
+    }
+
+    public function isWorkspaceOwner(Workspace $workspace): bool
+    {
+        return (int) $workspace->owner_id === (int) $this->id;
+    }
+
+    /**
+     * Puede administrar el workspace (dueño de registro o miembro con rol owner).
+     */
+    public function canAdminWorkspace(Workspace $workspace): bool
+    {
+        if ($this->isWorkspaceOwner($workspace)) {
+            return true;
+        }
+
+        return $workspace->members()
+            ->where('user_id', $this->id)
+            ->where('role', 'owner')
+            ->exists();
+    }
+
+    public function canAccessAssignment(Assignment $assignment): bool
+    {
+        return $this->canAccessWorkspace($assignment->workspace);
+    }
+
+    /**
+     * Creador de la tarea o administrador del workspace.
+     */
+    public function canManageAssignment(Assignment $assignment): bool
+    {
+        if ($this->canAdminWorkspace($assignment->workspace)) {
+            return true;
+        }
+
+        return (int) $assignment->created_by === (int) $this->id;
+    }
 }
