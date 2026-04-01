@@ -134,7 +134,7 @@ import {
     uploadSubmission,
 } from '@/api/submissions';
 import { useAuth } from '@/composables/useAuth';
-import { submissionPdfUrl } from '@/lib/pdfMerge';
+import { submissionIsMergeable } from '@/lib/pdfMerge';
 import type { Assignment, AssignmentMember, Submission } from '@/types/pegadocs';
 
 const route = useRoute();
@@ -183,11 +183,7 @@ const canMerge = computed(() => {
         return false;
     }
 
-    return (
-        submissions.value?.some(
-            (s) => s.status === 'accepted' && submissionPdfUrl(s) !== null,
-        ) ?? false
-    );
+    return submissions.value?.some((s) => submissionIsMergeable(s)) ?? false;
 });
 
 function submissionsForMember(memberPk: number): Submission[] {

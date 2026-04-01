@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use InvalidArgumentException;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class SubmissionController extends Controller
 {
@@ -32,6 +33,31 @@ class SubmissionController extends Controller
         $submissions = $assignment->submissions()->orderByDesc('created_at')->get();
 
         return SubmissionResource::collection($submissions)->response();
+    }
+
+    /**
+     * Descarga o visualización inline del archivo (evita depender de /storage público y envía la sesión vía API).
+     */
+    public function download(Request $request, Submission $submission): StreamedResponse
+    {
+        $this->authorize('view', $submission);
+
+        $variant = $request->query('variant', 'original');
+        $useConverted = $variant === 'converted' && filled($submission->converted_pdf_url);
+        $relativePath = $useConverted ? $submission->converted_pdf_url : $submission->file_url;
+
+        $disk = Storage::disk('public');
+        if (! $disk->exists($relativePath)) {
+            abort(404, 'Archivo no encontrado.');
+        }
+
+        $downloadName = $useConverted
+            ? pathinfo($submission->file_name, PATHINFO_FILENAME).'.pdf'
+            : $submission->file_name;
+
+        return $disk->response($relativePath, $downloadName, [
+            'Content-Disposition' => 'inline; filename="'.$this->asciiFilename($downloadName).'"',
+        ]);
     }
 
     public function store(StoreSubmissionRequest $request, Assignment $assignment): JsonResponse
@@ -107,5 +133,12 @@ class SubmissionController extends Controller
         }
 
         return (new SubmissionResource($submission))->response();
+    }
+
+    private function asciiFilename(string $name): string
+    {
+        $name = str_replace(["\0", '"', "\r", "\n"], '', $name);
+
+        return $name !== '' && $name !== '0' ? $name : 'archivo';
     }
 }

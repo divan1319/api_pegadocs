@@ -4,7 +4,6 @@ namespace App\Http\Resources;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
-use Illuminate\Support\Facades\Storage;
 
 class SubmissionResource extends JsonResource
 {
@@ -18,9 +17,9 @@ class SubmissionResource extends JsonResource
             'assignmentId' => $this->assignment_id,
             'assignmentMemberId' => $this->assignment_member_id,
             'fileName' => $this->file_name,
-            'fileUrl' => Storage::disk('public')->url($this->file_url),
+            'fileUrl' => url("/api/v1/submissions/{$this->id}/file"),
             'convertedPdfUrl' => $this->converted_pdf_url
-                ? Storage::disk('public')->url($this->converted_pdf_url)
+                ? url("/api/v1/submissions/{$this->id}/file?variant=converted")
                 : null,
             'fileType' => $this->file_type,
             'fileSize' => $this->file_size,

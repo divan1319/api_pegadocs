@@ -8,6 +8,7 @@ use App\Http\Requests\Api\UpdateAssignmentRequest;
 use App\Http\Requests\Api\UpdateAssignmentStatusRequest;
 use App\Http\Resources\AssignmentResource;
 use App\Models\Assignment;
+use App\Models\AssignmentMember;
 use App\Models\Workspace;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -42,6 +43,12 @@ class AssignmentController extends Controller
             'description' => $data['description'] ?? null,
             'deadline' => $data['deadline'] ?? null,
             'status' => $data['status'] ?? 'draft',
+        ]);
+
+        AssignmentMember::query()->create([
+            'assignment_id' => $assignment->id,
+            'user_id' => $user->id,
+            'status' => 'pending',
         ]);
 
         $assignment->load('workspace');

@@ -50,10 +50,12 @@ Route::prefix('v1')->group(function (): void {
         Route::get('assignments/{assignment}/submissions', [SubmissionController::class, 'index']);
         Route::post('assignments/{assignment}/submissions', [SubmissionController::class, 'store']);
 
+        Route::get('submissions/{submission}/file', [SubmissionController::class, 'download']);
         Route::delete('submissions/{submission}', [SubmissionController::class, 'destroy']);
         Route::patch('submissions/{submission}/status', [SubmissionController::class, 'updateStatus']);
 
         Route::get('assignments/{assignment}/merged-outputs', [MergedOutputController::class, 'index']);
         Route::post('assignments/{assignment}/merged-outputs', [MergedOutputController::class, 'store']);
+        Route::get('merged-outputs/{mergedOutput}/file', [MergedOutputController::class, 'download']);
     });
 });

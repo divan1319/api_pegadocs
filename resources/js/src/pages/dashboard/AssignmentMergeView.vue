@@ -21,7 +21,7 @@
         <template v-else-if="assignment">
             <UPageHeader
                 title="Unir PDFs"
-                description="Arrastra para ordenar las entregas aceptadas. Solo se incluyen archivos que tengan PDF (original o convertido desde imagen)."
+                description="Arrastra para ordenar las entregas aceptadas. PDFs nativos, PDF convertido en servidor (Imagick) o imágenes PNG/JPEG embebidas en el navegador."
             />
 
             <UAlert v-if="!mergeable.length" color="warning" title="No hay entregas aceptadas fusionables" />
@@ -81,7 +81,7 @@ import { useToast } from '@nuxt/ui/composables';
 import { fetchAssignment } from '@/api/assignments';
 import { fetchMergedOutputs, uploadMergedOutput } from '@/api/mergedOutputs';
 import { fetchSubmissions } from '@/api/submissions';
-import { mergeSubmissionPdfs, submissionPdfUrl } from '@/lib/pdfMerge';
+import { mergeSubmissionPdfs, submissionIsMergeable } from '@/lib/pdfMerge';
 import type { Submission } from '@/types/pegadocs';
 
 const route = useRoute();
@@ -115,9 +115,7 @@ const { data: outputs } = useQuery({
 });
 
 const mergeable = computed<Submission[]>(() => {
-    return (
-        submissions.value?.filter((s) => s.status === 'accepted' && submissionPdfUrl(s) !== null) ?? []
-    );
+    return submissions.value?.filter((s) => submissionIsMergeable(s)) ?? [];
 });
 
 watch(

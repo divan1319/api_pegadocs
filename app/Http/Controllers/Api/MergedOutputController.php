@@ -10,9 +10,11 @@ use App\Models\MergedOutput;
 use App\Services\MergedOutputService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use InvalidArgumentException;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class MergedOutputController extends Controller
 {
@@ -51,5 +53,23 @@ class MergedOutputController extends Controller
         return (new MergedOutputResource($output))
             ->response()
             ->setStatusCode(Response::HTTP_CREATED);
+    }
+
+    public function download(Request $request, MergedOutput $mergedOutput): StreamedResponse
+    {
+        $this->authorize('view', $mergedOutput);
+
+        $disk = Storage::disk('public');
+        $path = $mergedOutput->file_url;
+
+        if (! $disk->exists($path)) {
+            abort(404, 'Archivo no encontrado.');
+        }
+
+        $name = 'merged-'.$mergedOutput->id.'.pdf';
+
+        return $disk->response($path, $name, [
+            'Content-Disposition' => 'inline; filename="'.$name.'"',
+        ]);
     }
 }
