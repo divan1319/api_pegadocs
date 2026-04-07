@@ -21,16 +21,17 @@ return [
 
     /*
      * Con credenciales no se puede usar Access-Control-Allow-Origin: *.
-     * Orígenes explícitos (producción) + patrones para localhost en cualquier puerto (Vite, etc.).
+     * En producción/staging: solo CORS_ALLOWED_ORIGINS (dominio real del SPA).
+     * En local: mismos orígenes + patrones para localhost en cualquier puerto (Vite, etc.).
      */
     'allowed_origins' => array_values(array_filter(array_map(
         trim(...),
         explode(',', (string) env('CORS_ALLOWED_ORIGINS', '')),
     ))),
 
-    'allowed_origins_patterns' => [
+    'allowed_origins_patterns' => env('APP_ENV') === 'local' ? [
         '#^https?://(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$#',
-    ],
+    ] : [],
 
     'allowed_headers' => ['*'],
 
